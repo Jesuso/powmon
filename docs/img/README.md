@@ -1,13 +1,24 @@
 # Screenshots & images
 
-Drop dashboard screenshots and diagrams here, then reference them from the root
-README and docs.
+README images, captured from a running dashboard.
 
-Suggested set (keeps the README hero honest):
+| File | Used in | Shows |
+|------|---------|-------|
+| `dashboard-light.png` | README hero | full glance — live state, tiles, timeline, charts |
+| `money.png` | README gallery | daily + billing-period spent vs saved |
+| `compare.png` | README gallery | today-vs-yesterday overlay across all charts |
+| `battery.png` | README gallery | SOC + voltage with live charge setpoint lines |
+| `mobile-dark-es.png` | README gallery | phone layout, dark theme, Spanish |
 
-- `dashboard-light.png` — main view, light theme
-- `dashboard-dark.png` — main view, dark theme
-- `dashboard-mobile.png` — stacked/narrow layout
-- `wiring.jpg` — inverter + datalogger stick (optional)
+## Regenerate
 
-Once added, uncomment the image embed near the top of [`../../README.md`](../../README.md).
+Captured with [`../../dev-tools/shots.mjs`](../../dev-tools/shots.mjs)
+(playwright-core + system Chrome) against a live instance:
+
+```bash
+cd dev-tools
+npm install            # one-time: pulls playwright-core
+node shots.mjs https://your-powmon-host        # or a LAN URL; defaults to the public demo
+```
+
+Re-run after UI changes so the README stays honest.

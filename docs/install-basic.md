@@ -37,8 +37,10 @@ docker compose logs -f collector   # should show samples every ~10s, no auth/con
 curl -sf http://localhost:3001/api/health
 ```
 
-Then open **http://<host>:3001** in a browser. A green dot = the dashboard is
-receiving live samples.
+Then open the dashboard in a browser: **`http://localhost:3001`** if you're on
+the host itself, or **`http://<host-ip>:3001`** from a phone, tablet, or another
+computer on the same LAN (`localhost` there would point at *that* device, not
+the host). A green dot = the dashboard is receiving live samples.
 
 ## Configuration
 
@@ -62,7 +64,7 @@ After editing `.env`: `docker compose up -d` again to apply.
 ## Home Assistant
 
 The bundled broker exposes port `1883` on the LAN on purpose. In Home Assistant,
-add the **MQTT** integration and point it at `<host>:1883`. The collector
+add the **MQTT** integration and point it at `<host-ip>:1883`. The collector
 publishes [device discovery](https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery)
 messages, so the inverter and all its entities appear automatically — no manual
 sensor YAML.

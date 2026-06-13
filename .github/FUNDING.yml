@@ -1,0 +1,7 @@
+# Renders a "❤ Sponsor" button on the repo header and an inline sponsor box.
+# https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/displaying-a-sponsor-button-in-your-repository
+github: [Jesuso]
+# Add casual options later if you want, e.g.:
+# ko_fi: yourname
+# buy_me_a_coffee: yourname
+# custom: ["https://paypal.me/yourname"]

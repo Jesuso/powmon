@@ -1,0 +1,17 @@
+{
+  "name": "dev-tools",
+  "version": "1.0.0",
+  "description": "Utilities used to **reverse-engineer** the PowMr/Solarman datalogger protocol. You don't need these to run PowMon — they're here for contributors adding support for new registers, models, or sticks.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "github-markdown-css": "^5.9.0",
+    "marked": "^18.0.5",
+    "playwright-core": "^1.60.0"
+  }
+}

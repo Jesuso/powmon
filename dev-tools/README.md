@@ -8,6 +8,9 @@ support for new registers, models, or sticks.
 |------|--------------|
 | `log_server.py` | Raw TCP catch-all logger. Point the stick's report target at this host and watch exactly what bytes it sends and how often. Passive by default; `--ack` sends a generic Solarman V5 ACK to keep the stick streaming. |
 | `dummycloud.py` | Minimal fake Solarman/IGEN "cloud" server. Point the stick's **Server A** (primary cloud) slot at it; it logs every pushed V5 frame (type, length, hex, embedded Modbus) and replies with the V5 time-response ACK so the stick keeps connecting. |
+| `shots.mjs` | Capture the README screenshots from a running dashboard (playwright-core + system Chrome). `npm install` once, then `node shots.mjs <url>`. Writes to `../docs/img/`, then frames the gallery shots. |
+| `frame.mjs` | Composite the gallery shots onto a uniform 16:10 canvas (soft backdrop + rounded corners + shadow) so the README grid is even. Runs automatically at the end of `shots.mjs`; `node frame.mjs` re-frames in place. |
+| `render-readme.mjs` | Render `../README.md` ~ as GitHub shows it (marked + github-markdown-css) and screenshot it, to eyeball layout/image sizing before pushing. |
 
 Both speak the **Solarman V5 binary protocol over raw TCP** (not HTTP). Frame
 format and ACK behaviour were derived from

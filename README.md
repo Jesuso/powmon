@@ -1,8 +1,14 @@
 # PowMon
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![CI](https://github.com/Jesuso/powmon/actions/workflows/ci.yml/badge.svg)](https://github.com/Jesuso/powmon/actions/workflows/ci.yml)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![Discussions](https://img.shields.io/badge/Discussions-join-5865F2.svg)](https://github.com/Jesuso/powmon/discussions)
+[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-ea4aaa.svg)](https://github.com/sponsors/Jesuso)
+
 **A live, local dashboard for PowMr / SRNE hybrid solar inverters — every number explained, every kWh translated into money.**
 
-> The inverter speaks engineer; PowMon translates it into glances, plain words, and pesos.
+> The inverter speaks engineer; PowMon translates it into glances, plain words, and money.
 
 A hybrid solar inverter knows everything about your energy — sun coming in, what
 the battery holds, what the grid is charging you — but it speaks in registers,
@@ -15,8 +21,7 @@ history, and spent-vs-saved in your own currency. It also publishes to
 the inverter. **Local and private** — runs on your home network, no cloud
 account, no sign-in, nothing leaves the house.
 
-<!-- TODO: add docs/img/dashboard-light.png + dashboard-dark.png and embed here -->
-<!-- ![PowMon dashboard](docs/img/dashboard-light.png) -->
+![PowMon dashboard — live state, history, and money at a glance](docs/img/dashboard-light.png)
 
 ## How it works
 
@@ -49,8 +54,9 @@ cp .env.example .env      # set INVERTER_IP + LOGGER_SERIAL
 docker compose up -d
 ```
 
-- **Dashboard:** http://<host>:3001
-- **Home Assistant:** point its MQTT integration at `<host>:1883` — entities
+- **Dashboard:** `http://localhost:3001` (browsing on the host itself), or
+  `http://<host-ip>:3001` from a phone, tablet, or another computer on your LAN.
+- **Home Assistant:** point its MQTT integration at `<host-ip>:1883` — entities
   appear automatically via discovery.
 
 Already run your own broker? Remove the `mosquitto` service from
@@ -58,6 +64,43 @@ Already run your own broker? Remove the `mosquitto` service from
 
 → Full walkthrough: [`docs/install-basic.md`](docs/install-basic.md). Bare-metal
 / systemd / custom broker: [`docs/install-advanced.md`](docs/install-advanced.md).
+
+## Screenshots
+
+<table>
+<tr>
+<td width="50%">
+
+![Spent vs saved, per billing period](docs/img/money.png)
+
+**Money, first-class.** Every kWh shown as what it cost — or saved — today and this billing period.
+
+</td>
+<td width="50%">
+
+![Compare two days on one axis](docs/img/compare.png)
+
+**Scan & compare.** 30 days of history; overlay any two days on one 00–24h axis.
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+![Battery SOC and voltage with live charge setpoints](docs/img/battery.png)
+
+**Honest depth.** SOC + voltage with your *real* charge setpoints drawn from the inverter; night auto-shaded.
+
+</td>
+<td width="50%">
+
+![Dark theme, Spanish, phone layout](docs/img/mobile-dark-es.png)
+
+**Any screen, any theme, two languages.** Wall tablet to phone · light / dark / OS · English / Spanish.
+
+</td>
+</tr>
+</table>
 
 ## Hardware
 
@@ -91,6 +134,25 @@ compose.yml    one-command Docker stack
 - [SRNE config register map](docs/srne_config_registers.md)
 - [Dashboard product principles](dashboard/PRODUCT.md) · [engineering notes](dashboard/README.md)
 - [Contributing](CONTRIBUTING.md)
+
+## Community & contributing
+
+Contributions of every kind are welcome — code, docs, bug reports, ideas, and
+testing on inverters we haven't tried yet.
+
+- 🐛 **Found a bug?** [Open a bug report](https://github.com/Jesuso/powmon/issues/new/choose).
+- 💡 **Idea or feature request?** [Start a Discussion](https://github.com/Jesuso/powmon/discussions/categories/ideas).
+- 💬 **Question or setup help?** [Ask in Discussions Q&A](https://github.com/Jesuso/powmon/discussions/categories/q-a).
+- 🔧 **Sending a PR?** Read [CONTRIBUTING.md](CONTRIBUTING.md) first — dev setup and the few rules that keep changes cheap.
+- 🧭 **New here?** Look for [`good first issue`](https://github.com/Jesuso/powmon/labels/good%20first%20issue) labels.
+
+By participating you agree to the [Code of Conduct](.github/CODE_OF_CONDUCT.md).
+
+## Support
+
+PowMon is free and open source. If it saves you money or headaches and you'd
+like to give back, you can [**sponsor the project** ❤](https://github.com/sponsors/Jesuso).
+A star, a bug report, or a PR helps just as much.
 
 ## Credits
 

@@ -1,1 +1,9 @@
-blank_issues_enabled: true
+# Funnel intake: bugs → issue form; ideas/questions → Discussions.
+blank_issues_enabled: false
+contact_links:
+  - name: 💡 Feature idea or request
+    url: https://github.com/Jesuso/powmon/discussions/categories/ideas
+    about: Propose and discuss features in Discussions before they become tracked work.
+  - name: 💬 Question or setup help
+    url: https://github.com/Jesuso/powmon/discussions/categories/q-a
+    about: Ask in Discussions Q&A — setup help, supported hardware, general questions.

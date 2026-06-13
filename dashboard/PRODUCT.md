@@ -12,7 +12,7 @@ spending or saving money right now? Is the battery okay?*
 
 A live web dashboard on the local network that translates the inverter into
 human terms: plain-language values, history you can scan, and money — because
-pesos are the only energy unit everyone already understands.
+currency is the one energy unit everyone already understands.
 
 ## Vision
 
@@ -86,4 +86,4 @@ or the principle gets explicitly changed here.
 ## One line
 
 The inverter speaks engineer; PowMon translates it into glances, plain words,
-and pesos.
+and money.

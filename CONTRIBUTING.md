@@ -3,6 +3,21 @@
 Thanks for helping. PowMon is small and opinionated on purpose — these notes
 keep changes cheap and the project coherent.
 
+## Ways to contribute
+
+You don't have to write code to help:
+
+- **Report a bug** — [open a bug report](https://github.com/Jesuso/powmon/issues/new/choose).
+- **Suggest a feature / share an idea** — [Discussions › Ideas](https://github.com/Jesuso/powmon/discussions/categories/ideas).
+- **Ask or answer questions** — [Discussions › Q&A](https://github.com/Jesuso/powmon/discussions/categories/q-a).
+- **Improve docs** — typos, clearer wording, a missing step; PRs to `docs/` are very welcome.
+- **Test on your hardware** — tell us which inverter + datalogger you ran it on, working or not. Coverage is the slowest thing to grow alone.
+- **Send a PR** — see the workflow below.
+- **Sponsor** — [support the project ❤](https://github.com/sponsors/Jesuso) if it's useful to you.
+
+Everyone interacting in the project agrees to the
+[Code of Conduct](.github/CODE_OF_CONDUCT.md).
+
 ## Ground rules
 
 - **Read-only, always.** No code path may write to the inverter. This is a
