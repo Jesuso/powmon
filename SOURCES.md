@@ -10,7 +10,7 @@ instead of redistributing — download from the original authors.
   [danzelziggy/srne-solarman](https://github.com/danzelziggy/srne-solarman)
   (`srne-modbus-V2.07.pdf` at the repo root). This is the document that
   resolved our full `0xE0xx`/`0xE2xx`/`0xDF0x` map — see
-  [`srne_config_registers.md`](./srne_config_registers.md).
+  [`srne_config_registers.md`](docs/srne_config_registers.md).
 - **SRNE protocol v1.96 PDF + CSV transcription** — telemetry register map
   (0x01xx/0x02xx/0xF0xx blocks). By @HotNoob in
   [HotNoob/PythonProtocolGateway](https://github.com/HotNoob/PythonProtocolGateway):

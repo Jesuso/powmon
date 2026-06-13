@@ -147,6 +147,7 @@ testing on inverters we haven't tried yet.
 - 🧭 **New here?** Look for [`good first issue`](https://github.com/Jesuso/powmon/labels/good%20first%20issue) labels.
 
 By participating you agree to the [Code of Conduct](.github/CODE_OF_CONDUCT.md).
+Found a security issue? Please report it privately — see [Security Policy](.github/SECURITY.md).
 
 ## Support
 

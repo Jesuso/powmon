@@ -2,7 +2,7 @@
 //
 //   node shots.mjs [BASE_URL] [OUT_DIR]
 //
-// Defaults: https://powmon.jesuso.me  ->  ../docs/img
+// Defaults: http://localhost:3001  ->  ../docs/img
 // Uses playwright-core + the system Google Chrome (no bundled browser download).
 // SSE-safe: waits on selectors + a settle delay, never networkidle.
 import { chromium } from 'playwright-core';
@@ -11,7 +11,7 @@ import { dirname, resolve } from 'node:path';
 import { frameImage, GALLERY } from './frame.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const BASE = process.argv[2] || 'https://powmon.jesuso.me';
+const BASE = process.argv[2] || 'http://localhost:3001';
 const OUT = resolve(__dirname, process.argv[3] || '../docs/img');
 const CHROME = process.env.CHROME_BIN || '/usr/bin/google-chrome';
 
