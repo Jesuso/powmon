@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PowMon — Inverter</title>
+    <script>
+      // Set theme before first paint to avoid a flash of the wrong palette.
+      (function () {
+        try {
+          var q = new URLSearchParams(location.search).get("theme");
+          var p = (q === "light" || q === "dark" || q === "system")
+            ? q : localStorage.getItem("theme");
+          var dark = p === "dark" ||
+            ((p === null || p === "system") &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+        } catch (e) {
+          document.documentElement.setAttribute("data-theme", "dark");
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/client/main.tsx"></script>
+  </body>
+</html>

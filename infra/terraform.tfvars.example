@@ -1,0 +1,8 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is gitignored.
+cloudflare_account_id = "0123456789abcdef0123456789abcdef"
+domain                = "example.com"
+hostname              = "powmon.example.com"
+
+# Optional overrides:
+# origin_service = "http://localhost:80"    # nginx (default). Use :3001 for the web app directly.
+# tunnel_name    = "powmon-pi"

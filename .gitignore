@@ -1,0 +1,34 @@
+# --- secrets & local config (never commit) ---
+# Real env files; keep the *.example siblings.
+.env
+*.env
+!*.env.example
+powmr.env
+dashboard/deploy.env
+
+# Private keys / certs (dev-tools MITM certs, etc.)
+*.pem
+*.key
+
+# Terraform / OpenTofu state & vars (belt-and-suspenders; infra/.gitignore also covers these)
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+*.tfplan
+
+# --- generated / heavy artifacts ---
+.venv/
+__pycache__/
+node_modules/
+dashboard/dist/
+dashboard/data.db*
+dev-tools/captures/
+*.log
+
+# --- agent / editor / OS ---
+.claude/
+.DS_Store
+.vscode/
+.idea/

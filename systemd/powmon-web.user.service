@@ -1,0 +1,22 @@
+[Unit]
+Description=PowMon web dashboard (Fastify + SSE historian)
+# mosquitto is a system service; user units can't order against it. The app's
+# mqtt client auto-reconnects (reconnectPeriod), so broker-not-up is tolerated.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/projects/powmon/dashboard
+Environment=NODE_ENV=production
+Environment=MQTT_HOST=127.0.0.1
+Environment=MQTT_PORT=1883
+Environment=API_PORT=3001
+Environment=BASE_TOPIC=solar/inverter
+Environment=DB_PATH=%h/projects/powmon/dashboard/data.db
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

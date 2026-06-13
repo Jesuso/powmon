@@ -1,0 +1,20 @@
+[Unit]
+Description=PowMr/SRNE inverter MQTT telemetry daemon
+After=network-online.target mosquitto.service
+Wants=network-online.target
+
+# Edit User and the three paths below to your install location, then:
+#   sudo cp powmr-telemetry.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now powmr-telemetry
+# (or use powmr-telemetry.user.service, which needs no editing)
+[Service]
+Type=simple
+User=youruser
+WorkingDirectory=/home/youruser/powmon/collector
+EnvironmentFile=-/home/youruser/powmon/collector/powmr.env
+ExecStart=/home/youruser/powmon/collector/.venv/bin/python /home/youruser/powmon/collector/powmr_daemon.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

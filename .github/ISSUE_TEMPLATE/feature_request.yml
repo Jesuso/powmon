@@ -1,0 +1,23 @@
+name: Feature request
+description: Suggest an improvement
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What can't you do today? Who is it for?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Proposed solution
+  - type: checkboxes
+    id: principles
+    attributes:
+      label: Fits PowMon's principles
+      description: See CONTRIBUTING.md and dashboard/PRODUCT.md
+      options:
+        - label: Stays read-only (never writes to the inverter)
+        - label: Stays local-first (no required cloud / data leaving the LAN)

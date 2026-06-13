@@ -1,0 +1,23 @@
+# Local provider plugins & cache
+.terraform/
+
+# State (also encrypted at rest, but never commit it)
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+
+# Secrets: real var files. Keep the example.
+*.tfvars
+*.tfvars.json
+!*.tfvars.example
+
+# Secrets: sourced env file (CLOUDFLARE_API_TOKEN, TF_VAR_state_passphrase)
+.env
+*.env
+!*.env.example
+
+# Saved plans
+*.tfplan
+
+# Keep .terraform.lock.hcl committed (pins provider versions) — do NOT ignore it.

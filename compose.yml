@@ -1,0 +1,56 @@
+# PowMon stack: MQTT broker + inverter collector + web dashboard.
+#
+#   cp .env.example .env    # set INVERTER_IP + LOGGER_SERIAL
+#   docker compose up -d
+#
+# Dashboard: http://<host>:3001
+# Home Assistant: point its MQTT integration at <host>:1883 — the collector
+# publishes HA device discovery, entities appear automatically.
+# Already have a broker? Remove the mosquitto service and set MQTT_HOST in .env.
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - "${MQTT_PUBLIC_PORT:-1883}:1883" # exposed so Home Assistant on the LAN can use this broker
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+
+  collector:
+    build: ./collector
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    environment:
+      MQTT_HOST: ${MQTT_HOST:-mosquitto}
+      MQTT_PORT: ${MQTT_PORT:-1883}
+      INVERTER_IP: ${INVERTER_IP:?set INVERTER_IP in .env (copy .env.example)}
+      LOGGER_SERIAL: ${LOGGER_SERIAL:?set LOGGER_SERIAL in .env (copy .env.example)}
+      INVERTER_PORT: ${INVERTER_PORT:-8899}
+      POLL_INTERVAL: ${POLL_INTERVAL:-10}
+      BASE_TOPIC: ${BASE_TOPIC:-solar/inverter}
+      DISCOVERY_PREFIX: ${DISCOVERY_PREFIX:-homeassistant}
+      MQTT_USER: ${MQTT_USER:-}
+      MQTT_PASS: ${MQTT_PASS:-}
+
+  dashboard:
+    build: ./dashboard
+    restart: unless-stopped
+    depends_on:
+      - mosquitto
+    ports:
+      - "${DASHBOARD_PORT:-3001}:3001"
+    environment:
+      NODE_ENV: production
+      MQTT_HOST: ${MQTT_HOST:-mosquitto}
+      MQTT_PORT: ${MQTT_PORT:-1883}
+      BASE_TOPIC: ${BASE_TOPIC:-solar/inverter}
+      DB_PATH: /data/data.db
+    volumes:
+      - dashboard-data:/data
+
+volumes:
+  mosquitto-data:
+  dashboard-data:

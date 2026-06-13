@@ -1,0 +1,17 @@
+[Unit]
+Description=PowMr/SRNE inverter MQTT telemetry daemon (user service)
+# Note: user services can't order against the system mosquitto.service. The daemon
+# uses connect_async + auto-reconnect, so it tolerates the broker not being up yet.
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/projects/powmon/collector
+EnvironmentFile=-%h/projects/powmon/collector/powmr.env
+ExecStart=%h/projects/powmon/collector/.venv/bin/python %h/projects/powmon/collector/powmr_daemon.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
