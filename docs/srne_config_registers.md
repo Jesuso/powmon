@@ -2,9 +2,9 @@
 
 Cross-reference of the inverter's **setup menu** (manual §5.2), the **live device
 values**, and the **Modbus config registers**. Names come from the **SRNE Modbus
-V2.07 protocol** (P05/P06 setting areas — see [`SOURCES.md`](./SOURCES.md) for the
+V2.07 protocol** (P05/P06 setting areas — see [`SOURCES.md`](../SOURCES.md) for the
 document link and credits), verified against the device with
-[`powmr_config_poll.py`](./powmr_config_poll.py) sweeps and perturbation tests
+[`powmr_config_poll.py`](../collector/powmr_config_poll.py) sweeps and perturbation tests
 (2026-06-08 → 2026-06-10).
 
 Inverter: SRNE-based PowMr SP5K, 48 V split-phase, fw `SR-240618-0143-301`.
