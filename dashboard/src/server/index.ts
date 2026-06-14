@@ -70,7 +70,11 @@ function parseCookie(header: string | undefined): Record<string, string> {
     const eq = part.indexOf("=");
     if (eq < 0) continue;
     const k = part.slice(0, eq).trim();
-    if (k) out[k] = decodeURIComponent(part.slice(eq + 1).trim());
+    if (!k) continue;
+    const v = part.slice(eq + 1).trim();
+    // Malformed %-encoding would throw URIError; fall back to the raw value so a
+    // bad cookie can't turn every auth check into a 500.
+    try { out[k] = decodeURIComponent(v); } catch { out[k] = v; }
   }
   return out;
 }
