@@ -25,7 +25,59 @@ State is stored locally and **encrypted at rest**.
 Full instructions, prerequisites (Cloudflare API token + account ID), and the
 connector install for the host are in **[`infra/README.md`](../infra/README.md)**.
 
-## Gating settings writes
+## Security
+
+Tunneling the dashboard trades "local and private" for "reachable from
+anywhere." Nothing here can damage the inverter — the collector only **reads**
+it over Modbus and publishes to MQTT, has no inbound surface, and the tunnel
+never touches it. All exposure risk is **dashboard-side**: who can see your
+energy data, who can change settings, and who can find your house.
+
+### What each endpoint exposes
+
+The dashboard serves these routes. Everything reachable over the tunnel unless
+you put auth (e.g. [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/))
+in front of the whole hostname.
+
+| Endpoint | Method | Exposes | Gated? |
+|---|---|---|---|
+| `/api/latest`, `/api/history`, `/api/states`, `/api/daily` | GET | Live + historical energy telemetry | **No** — open to any reader |
+| `/api/stream` | GET (SSE) | Same telemetry, live push | **No** |
+| `/api/config`, `/api/health` | GET | Tariff/currency config, row count, online flag | **No** |
+| `/api/settings` | GET | Tariff, billing period, location | Coords **coarsened** for unauthenticated reads |
+| `/api/settings` | PUT | Changes tariff, billing, location | Yes, if `SETTINGS_PASSWORD` is set |
+| `/api/auth` | GET/POST | Whether a gate is on / password check | n/a |
+
+The telemetry GETs have **no built-in read gate** — there is no read-only
+password mode. If the dashboard shouldn't be world-readable, the data GETs
+must be fronted by external auth (Cloudflare Access or equivalent); a
+`SETTINGS_PASSWORD` alone leaves all reads open.
+
+### Before you tunnel — checklist
+
+1. **Set `SETTINGS_PASSWORD`** — closes the one open write route
+   (`PUT /api/settings`). See [Gating settings writes](#gating-settings-writes).
+2. **Confirm coordinate coarsening** — default `LOCATION_PUBLIC_DECIMALS=2`
+   (~1.1 km) hides the house from unauthenticated reads. Lower it to coarsen
+   further. See [Coarsening location](#coarsening-location-on-public-reads).
+3. **Decide who may read at all** — telemetry GETs stay open with no built-in
+   gate. To keep the whole dashboard private, front it with Cloudflare Access
+   (or equivalent). There is no `PUBLIC_READONLY`-style flag; read protection
+   is an external-auth decision.
+4. **Mind the transport** — see the TLS note below before reusing any sensitive
+   password.
+
+### Plain HTTP vs TLS
+
+`SETTINGS_PASSWORD` and the session cookie travel **in the request**. Over a
+Cloudflare Tunnel, TLS terminates at Cloudflare's edge, so the public hop is
+encrypted. But if you reach the origin over **plain-HTTP LAN** (the default —
+the dashboard does not serve TLS itself), the password is posted to
+`POST /api/auth` **in clear** and anyone sniffing that LAN segment can read it.
+Treat `SETTINGS_PASSWORD` as a low-value shared secret — never reuse a
+password you care about — unless the origin itself is served over HTTPS.
+
+### Gating settings writes
 
 The dashboard is read-only over the inverter, but it does have **one write
 route** — `PUT /api/settings` (tariff, billing period, location). On the LAN
@@ -47,7 +99,7 @@ SETTINGS_PASSWORD=some-long-passphrase
 This protects the write route, not the data — the read endpoints (live state,
 history, charts) stay open to anyone who can reach the dashboard.
 
-## Coarsening location on public reads
+### Coarsening location on public reads
 
 The location used for sunrise/sunset night-shading is stored at full precision,
 but `GET /api/settings` **rounds it for unauthenticated reads** so a public read
@@ -67,12 +119,12 @@ Precision is configurable via **`LOCATION_PUBLIC_DECIMALS`** (default `2`):
 2 dp keeps sunrise/sunset accurate to well under a minute while hiding the
 house. Set it lower to coarsen further, higher to disclose more.
 
-## Security note
+### In short
 
 Exposing the dashboard publicly removes the "local and private" guarantee.
 PowMon is read-only over the inverter, so there's no way to harm it — but the
 tunnel publishes your energy data to whoever can reach the hostname, and (unless
-you set `SETTINGS_PASSWORD`, above) anyone reaching it can change the tariff and
+you set `SETTINGS_PASSWORD`) anyone reaching it can change the tariff and
 location. Put
 [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/)
 (or equivalent auth) in front of it if it shouldn't be world-readable.
