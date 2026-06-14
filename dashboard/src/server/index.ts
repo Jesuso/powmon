@@ -261,20 +261,24 @@ app.post("/api/auth", async (req, reply) => {
 
   // Locked out? Refuse before touching the password so brute force can't even
   // probe the compare. 429 + Retry-After per RFC 6585.
+  // Locked out? Refuse before touching the password so brute force can't even
+  // probe the compare. 429 + Retry-After per RFC 6585. No log here: while locked
+  // this branch is hit on every request, so logging it would let an attacker
+  // flood the log — the lockout is logged once below, when it engages.
   const waitMs = authLimiter.retryAfterMs(ip);
   if (waitMs > 0) {
-    const retrySec = Math.ceil(waitMs / 1000);
-    reply.header("Retry-After", String(retrySec));
-    console.warn(`[auth] rate-limited ip=${ip} retry_in=${retrySec}s`);
-    return reply.code(429).send({ error: "too many attempts", retry_after: retrySec });
+    reply.header("Retry-After", String(Math.ceil(waitMs / 1000)));
+    return reply.code(429).send({ error: "too many attempts", retry_after: Math.ceil(waitMs / 1000) });
   }
 
   const body = req.body as { password?: unknown } | undefined;
   const password = typeof body?.password === "string" ? body.password : "";
   if (!password || !passwordMatches(password)) {
-    authLimiter.recordFailure(ip);
-    // Log the event, never the attempted value.
-    console.warn(`[auth] failed attempt ip=${ip}`);
+    const lockedMs = authLimiter.recordFailure(ip);
+    // Log the event, never the attempted value. Bounded: once locked, the 429
+    // branch above returns before we reach here.
+    const note = lockedMs > 0 ? ` — locked out ${Math.ceil(lockedMs / 1000)}s` : "";
+    console.warn(`[auth] failed attempt ip=${ip}${note}`);
     return reply.code(401).send({ error: "invalid password" });
   }
 

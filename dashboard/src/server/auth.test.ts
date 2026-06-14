@@ -34,6 +34,14 @@ test("lockout starts after free attempts and backs off exponentially", () => {
   assert.equal(rl.retryAfterMs("ip", now), 4000);
 });
 
+test("recordFailure returns 0 while free, then the engaged lockout ms", () => {
+  const rl = new AuthRateLimiter(CFG);
+  for (let i = 0; i < CFG.freeAttempts; i++) {
+    assert.equal(rl.recordFailure("ip", 0), 0); // still within free attempts
+  }
+  assert.equal(rl.recordFailure("ip", 0), CFG.lockBaseMs); // first lockout engages
+});
+
 test("lockout window is capped at lockMaxMs", () => {
   const rl = new AuthRateLimiter(CFG);
   for (let i = 0; i < 20; i++) rl.recordFailure("ip", 0);

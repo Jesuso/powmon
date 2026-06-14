@@ -42,8 +42,10 @@ export class AuthRateLimiter {
   }
 
   // Record a failed attempt and (re)compute the lockout window. Each failure
-  // past `freeAttempts` doubles the window, capped at `lockMaxMs`.
-  recordFailure(ip: string, now: number = Date.now()): void {
+  // past `freeAttempts` doubles the window, capped at `lockMaxMs`. Returns the
+  // resulting lockout in ms (0 if the IP still has free attempts) so the caller
+  // can log the lockout once, at the moment it engages.
+  recordFailure(ip: string, now: number = Date.now()): number {
     const b = this.buckets.get(ip) ?? { fails: 0, lockedUntil: 0, lastSeen: now };
     b.fails++;
     b.lastSeen = now;
@@ -53,6 +55,7 @@ export class AuthRateLimiter {
       b.lockedUntil = now + lock;
     }
     this.buckets.set(ip, b);
+    return Math.max(0, b.lockedUntil - now);
   }
 
   // A correct password clears the IP's history immediately.
