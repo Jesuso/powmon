@@ -47,6 +47,9 @@ DISC = os.getenv("DISCOVERY_PREFIX", "homeassistant")
 INTERVAL = int(os.getenv("POLL_INTERVAL", "10"))
 EXPIRE = INTERVAL * 3  # entity -> unavailable after this many seconds without a fresh state
 LOCK_PATH = os.getenv("LOCK_PATH", "/tmp/powmr_daemon.lock")
+# Touched after every successful publish; the container HEALTHCHECK reads its
+# mtime to tell "polling fine" from "stuck/dead".
+HEARTBEAT_PATH = os.getenv("HEARTBEAT_PATH", "/tmp/powmr_daemon.heartbeat")
 
 # MQTT node id ties HA entities to this datalogger; derived from the serial so
 # two inverters on one broker don't collide.
@@ -182,6 +185,14 @@ def on_message(client, userdata, msg):
         print("[mqtt] HA birth -> re-announcing discovery")
         announce(client)
 
+def touch_heartbeat():
+    """Bump the heartbeat file's mtime so the container healthcheck sees a live poll."""
+    try:
+        with open(HEARTBEAT_PATH, "w") as f:
+            f.write(str(int(time.time())))
+    except OSError as e:
+        print(f"[heartbeat] write failed: {e}", file=sys.stderr)
+
 def acquire_singleton_lock():
     """Refuse to start if another daemon instance is already running.
     The Solarman stick allows ONE TCP client; two daemons -> poll contention (recurring footgun)."""
@@ -227,6 +238,7 @@ def run(dry_run=False, once=False):
                 print("=== STATE ===\n", payload)
             else:
                 client.publish(STATE_TOPIC, payload, retain=False)  # expire_after handles staleness
+                touch_heartbeat()
                 print(f"[pub] {STATE_TOPIC} soc={data.get('battery_soc')} "
                       f"pv={data.get('pv_total_power')}W load={data.get('load_power')}W")
         else:
