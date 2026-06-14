@@ -47,6 +47,40 @@ SETTINGS_PASSWORD=some-long-passphrase
 This protects the write route, not the data — the read endpoints (live state,
 history, charts) stay open to anyone who can reach the dashboard.
 
+## Hardening the auth endpoint
+
+When the gate is on, `POST /api/auth` is the one attackable surface on a
+publicly-exposed instance. It is hardened as follows:
+
+- **Constant-time password compare** (`crypto.timingSafeEqual` over SHA-256
+  digests) so a wrong guess can't be timed character-by-character.
+- **Per-IP rate limiting.** After 5 failed attempts an IP is locked out with
+  exponential backoff (30 s, doubling, capped at 15 min). Locked requests get
+  `429 Too Many Attempts` + a `Retry-After` header, and the correct password is
+  refused while locked. A successful login clears the IP's counter.
+- **Hardened session cookie:** `HttpOnly` + `SameSite=Strict`, with `Secure`
+  added automatically when the request arrives over TLS. The session carries a
+  signed 7-day expiry, and the per-process signing secret means a restart
+  invalidates all sessions.
+- **Failed attempts are logged** (`[auth] failed attempt ip=…`) — the IP only,
+  never the attempted value.
+
+Two environment variables tune this for a proxied deployment:
+
+| Variable | Default | Effect |
+|---|---|---|
+| `TRUST_PROXY` | off | Trust `X-Forwarded-*` so rate limiting keys on the real client IP (not the proxy). **Enable only behind a trusted proxy** like the Cloudflare Tunnel connector — on a bare LAN it lets a client spoof its IP and dodge the limiter. |
+| `COOKIE_SECURE` | `auto` | `auto` derives the cookie `Secure` flag from the request scheme; `true`/`false` force it. |
+
+### Plain-HTTP LAN caveat
+
+Over a plain-HTTP LAN (no TLS) **the password travels in clear text** on the
+wire, and `Secure` is (correctly) not set so the cookie still works. This is
+acceptable for a trusted LAN — the threat model there is the open write route,
+not a wiretap. For public exposure, TLS is assumed terminated upstream (the
+Cloudflare Tunnel edge), which is where `Secure` and real-client-IP rate
+limiting kick in. Don't expose the dashboard over plain HTTP to the internet.
+
 ## Coarsening location on public reads
 
 The location used for sunrise/sunset night-shading is stored at full precision,
