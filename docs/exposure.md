@@ -25,7 +25,52 @@ State is stored locally and **encrypted at rest**.
 Full instructions, prerequisites (Cloudflare API token + account ID), and the
 connector install for the host are in **[`infra/README.md`](../infra/README.md)**.
 
-## Gating settings writes
+## Security
+
+Tunneling the dashboard trades "local and private" for "reachable from
+anywhere." Nothing here can damage the inverter — the collector only **reads**
+it over Modbus and publishes to MQTT, has no inbound surface, and the tunnel
+never touches it. All exposure risk is **dashboard-side**: who can see your
+energy data, who can change settings, and who can find your house.
+
+### What each endpoint exposes
+
+The dashboard serves these routes. Everything reachable over the tunnel unless
+you put auth (e.g. [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/))
+in front of the whole hostname.
+
+| Endpoint | Method | Exposes | Gated? |
+|---|---|---|---|
+| `/api/latest`, `/api/history`, `/api/states`, `/api/daily` | GET | Live + historical energy telemetry | **No** — open to any reader |
+| `/api/stream` | GET (SSE) | Same telemetry, live push | **No** |
+| `/api/config`, `/api/health` | GET | Tariff/currency config, row count, online flag | **No** |
+| `/api/settings` | GET | Tariff, billing period, location | Coords **coarsened** for unauthenticated reads |
+| `/api/settings` | PUT | Changes tariff, billing, location | Yes — gated by `SETTINGS_PASSWORD`, or blocked entirely by `PUBLIC_READONLY` |
+| `/api/auth` | GET/POST | Whether a gate is on / password check | n/a |
+
+The telemetry GETs have **no built-in read gate** — there is no read-only
+password mode. If the dashboard shouldn't be world-readable, the data GETs
+must be fronted by external auth (Cloudflare Access or equivalent); a
+`SETTINGS_PASSWORD` alone leaves all reads open.
+
+### Before you tunnel — checklist
+
+1. **Lock down writes** — gate them with `SETTINGS_PASSWORD`, or disable them
+   outright with `PUBLIC_READONLY=1`. Either closes the open write route
+   (`PUT /api/settings`). See [Gating settings writes](#gating-settings-writes)
+   and [Read-only public mode](#read-only-public-mode).
+2. **Confirm coordinate coarsening** — default `LOCATION_PUBLIC_DECIMALS=2`
+   (~1.1 km) hides the house from unauthenticated reads. Lower it to coarsen
+   further. See [Coarsening location](#coarsening-location-on-public-reads).
+3. **Decide who may read at all** — telemetry GETs stay open with no built-in
+   read gate; `PUBLIC_READONLY` blocks *writes*, not reads. To keep the whole
+   dashboard private, front it with Cloudflare Access (or equivalent). Read
+   protection is an external-auth decision.
+4. **Mind the transport** — `SETTINGS_PASSWORD` posts in clear over plain-HTTP.
+   See [Hardening the auth endpoint](#hardening-the-auth-endpoint) before
+   exposing anything over plain HTTP.
+
+### Gating settings writes
 
 The dashboard is read-only over the inverter, but it does have **one write
 route** — `PUT /api/settings` (tariff, billing period, location). On the LAN
@@ -47,7 +92,7 @@ SETTINGS_PASSWORD=some-long-passphrase
 This protects the write route, not the data — the read endpoints (live state,
 history, charts) stay open to anyone who can reach the dashboard.
 
-## Read-only public mode
+### Read-only public mode
 
 If you'd rather share the dashboard **read-only** — show the data, allow zero
 changes, and not bother with a password at all — set **`PUBLIC_READONLY`**:
@@ -70,7 +115,7 @@ below (unauthenticated reads are still coarsened).
 
 Accepted truthy values: `1`, `true`, `yes`, `on` (case-insensitive).
 
-## Hardening the auth endpoint
+### Hardening the auth endpoint
 
 When the gate is on, `POST /api/auth` is the one attackable surface on a
 publicly-exposed instance. It is hardened as follows:
@@ -95,7 +140,7 @@ Two environment variables tune this for a proxied deployment:
 | `TRUST_PROXY` | off | Trust `X-Forwarded-*` so rate limiting keys on the real client IP (not the proxy). **Enable only behind a trusted proxy** like the Cloudflare Tunnel connector — on a bare LAN it lets a client spoof its IP and dodge the limiter. |
 | `COOKIE_SECURE` | `auto` | `auto` derives the cookie `Secure` flag from the request scheme; `true`/`false` force it. |
 
-### Plain-HTTP LAN caveat
+#### Plain-HTTP LAN caveat
 
 Over a plain-HTTP LAN (no TLS) **the password travels in clear text** on the
 wire, and `Secure` is (correctly) not set so the cookie still works. This is
@@ -104,7 +149,7 @@ not a wiretap. For public exposure, TLS is assumed terminated upstream (the
 Cloudflare Tunnel edge), which is where `Secure` and real-client-IP rate
 limiting kick in. Don't expose the dashboard over plain HTTP to the internet.
 
-## Coarsening location on public reads
+### Coarsening location on public reads
 
 The location used for sunrise/sunset night-shading is stored at full precision,
 but `GET /api/settings` **rounds it for unauthenticated reads** so a public read
@@ -124,7 +169,7 @@ Precision is configurable via **`LOCATION_PUBLIC_DECIMALS`** (default `2`):
 2 dp keeps sunrise/sunset accurate to well under a minute while hiding the
 house. Set it lower to coarsen further, higher to disclose more.
 
-## Security note
+### In short
 
 Exposing the dashboard publicly removes the "local and private" guarantee.
 PowMon is read-only over the inverter, so there's no way to harm it — but the
