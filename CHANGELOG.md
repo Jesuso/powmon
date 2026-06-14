@@ -12,6 +12,16 @@ All notable changes to PowMon are documented here. Format follows
   (unchanged). When set, `PUT /api/settings` requires a session minted by
   `POST /api/auth` (constant-time password check, httpOnly signed cookie). For
   public exposure; see `docs/exposure.md`.
+- Container healthchecks for all three services so `docker compose ps` reports
+  real status: dashboard probes `/api/health`, mosquitto does a test publish, and
+  the collector checks a poll heartbeat. Dependents now wait for the broker to be
+  healthy before starting (`depends_on: condition: service_healthy`).
+
+### Fixed
+
+- Collector logs are no longer invisible: `PYTHONUNBUFFERED=1` makes `print()`
+  flush immediately, so `docker compose logs collector` shows samples live
+  instead of looking dead while the daemon polls fine.
 
 ## [0.1.0] — 2026-06-13
 
