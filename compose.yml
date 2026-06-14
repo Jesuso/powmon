@@ -48,6 +48,7 @@ services:
       MQTT_PORT: ${MQTT_PORT:-1883}
       BASE_TOPIC: ${BASE_TOPIC:-solar/inverter}
       DB_PATH: /data/data.db
+      SETTINGS_PASSWORD: ${SETTINGS_PASSWORD:-} # optional: gate settings writes (see docs/exposure.md)
     volumes:
       - dashboard-data:/data
 

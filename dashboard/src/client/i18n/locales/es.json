@@ -57,7 +57,14 @@
     "locationHint": "Se usa para sombrear las noches (del atardecer al amanecer) en las gráficas, para ver de un vistazo cuándo debería subir y bajar la energía solar. Encuentra tus coordenadas en cualquier app de mapas. Déjalo vacío para desactivar.",
     "lat": "Latitud",
     "lon": "Longitud",
-    "locationOff": "Sin ubicación — sombreado nocturno desactivado."
+    "locationOff": "Sin ubicación — sombreado nocturno desactivado.",
+    "lock": {
+      "title": "Bloqueado",
+      "hint": "Guardar la configuración requiere contraseña en este servidor. Ingresa la contraseña para hacer cambios.",
+      "password": "Contraseña",
+      "unlock": "Desbloquear",
+      "wrong": "Contraseña incorrecta."
+    }
   },
   "chartRef": {
     "battery_to_mains_v": "→ Red",

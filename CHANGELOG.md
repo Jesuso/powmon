@@ -6,6 +6,13 @@ All notable changes to PowMon are documented here. Format follows
 
 ## [Unreleased]
 
+### Added
+
+- Optional **`SETTINGS_PASSWORD`** gate on settings writes. Unset → no gate
+  (unchanged). When set, `PUT /api/settings` requires a session minted by
+  `POST /api/auth` (constant-time password check, httpOnly signed cookie). For
+  public exposure; see `docs/exposure.md`.
+
 ## [0.1.0] — 2026-06-13
 
 First public release.

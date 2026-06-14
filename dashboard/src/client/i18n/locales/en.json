@@ -101,7 +101,14 @@
     "locationHint": "Used to shade nights (sunset to sunrise) on the charts, so you can see at a glance when solar should rise and fall. Find your coordinates in any maps app. Leave empty to disable.",
     "lat": "Latitude",
     "lon": "Longitude",
-    "locationOff": "No location — night shading disabled."
+    "locationOff": "No location — night shading disabled.",
+    "lock": {
+      "title": "Locked",
+      "hint": "Saving settings is password-protected on this server. Enter the password to make changes.",
+      "password": "Password",
+      "unlock": "Unlock",
+      "wrong": "Wrong password."
+    }
   },
   "chartRef": {
     "battery_to_mains_v": "→ Grid",

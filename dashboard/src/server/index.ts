@@ -4,6 +4,7 @@ import mqtt from "mqtt";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { existsSync } from "node:fs";
+import { createHmac, randomBytes, timingSafeEqual, createHash } from "node:crypto";
 import { Store } from "./db.ts";
 import { NUMERIC_KEYS, DEFAULT_TARIFF, DEFAULT_BILLING, type InverterState, type HistoryResponse, type LatestResponse, type StatesResponse, type ConfigResponse, type SettingsResponse, type TariffSettings, type BillingSettings, type LocationSettings, type DailyResponse } from "../shared/types.ts";
 
@@ -16,6 +17,63 @@ const MQTT_PORT = Number(process.env.MQTT_PORT ?? 1883);
 const BASE = process.env.BASE_TOPIC ?? "solar/inverter";
 const DB_PATH = process.env.DB_PATH ?? join(ROOT, "data.db");
 const RETENTION_DAYS = Number(process.env.RETENTION_DAYS ?? 30);
+
+// ---- optional settings-write auth ----
+// SETTINGS_PASSWORD unset/empty -> no gate (fully backward-compatible).
+// When set, PUT /api/settings requires a valid signed session cookie minted by
+// POST /api/auth. Cookie is httpOnly + signed (HMAC-SHA256) so it can't be forged.
+const SETTINGS_PASSWORD = process.env.SETTINGS_PASSWORD ?? "";
+const AUTH_ENABLED = SETTINGS_PASSWORD.length > 0;
+const SESSION_TTL_MS = 7 * 86400_000;
+const COOKIE_NAME = "pm_session";
+// Per-process secret: rotates on restart (invalidates old sessions) and keeps
+// the raw password out of the cookie signature.
+const SESSION_SECRET = randomBytes(32);
+
+function mintSession(): string {
+  const exp = String(Date.now() + SESSION_TTL_MS);
+  const sig = createHmac("sha256", SESSION_SECRET).update(exp).digest("hex");
+  return `${exp}.${sig}`;
+}
+
+function validSession(cookieHeader: string | undefined): boolean {
+  const raw = parseCookie(cookieHeader)[COOKIE_NAME];
+  if (!raw) return false;
+  const dot = raw.lastIndexOf(".");
+  if (dot < 0) return false;
+  const exp = raw.slice(0, dot), sig = raw.slice(dot + 1);
+  const want = createHmac("sha256", SESSION_SECRET).update(exp).digest("hex");
+  if (!timingSafeEqualHex(sig, want)) return false;
+  const expN = Number(exp);
+  return Number.isFinite(expN) && expN > Date.now();
+}
+
+// Length-safe constant-time compare for hex strings.
+function timingSafeEqualHex(a: string, b: string): boolean {
+  const ab = Buffer.from(a, "hex"), bb = Buffer.from(b, "hex");
+  if (ab.length !== bb.length || ab.length === 0) return false;
+  return timingSafeEqual(ab, bb);
+}
+
+// Compare via fixed-length SHA-256 digests so timingSafeEqual never sees a
+// length mismatch (which would itself leak length and throw).
+function passwordMatches(input: string): boolean {
+  const a = createHash("sha256").update(input).digest();
+  const b = createHash("sha256").update(SETTINGS_PASSWORD).digest();
+  return timingSafeEqual(a, b);
+}
+
+function parseCookie(header: string | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (!header) return out;
+  for (const part of header.split(";")) {
+    const eq = part.indexOf("=");
+    if (eq < 0) continue;
+    const k = part.slice(0, eq).trim();
+    if (k) out[k] = decodeURIComponent(part.slice(eq + 1).trim());
+  }
+  return out;
+}
 
 const store = new Store(DB_PATH);
 
@@ -145,8 +203,30 @@ function settingsSnapshot(): SettingsResponse {
 
 app.get("/api/settings", async (): Promise<SettingsResponse> => settingsSnapshot());
 
+// ---- auth (only meaningful when SETTINGS_PASSWORD is set) ----
+// Whether a gate is active, and whether this request already holds a session.
+app.get("/api/auth", async (req) => ({
+  required: AUTH_ENABLED,
+  authed: AUTH_ENABLED ? validSession(req.headers.cookie) : true,
+}));
+
+app.post("/api/auth", async (req, reply) => {
+  if (!AUTH_ENABLED) return { ok: true, required: false };
+  const body = req.body as { password?: unknown } | undefined;
+  const password = typeof body?.password === "string" ? body.password : "";
+  if (!password || !passwordMatches(password)) {
+    return reply.code(401).send({ error: "invalid password" });
+  }
+  reply.header("Set-Cookie",
+    `${COOKIE_NAME}=${mintSession()}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${SESSION_TTL_MS / 1000}`);
+  return { ok: true };
+});
+
 // Partial update: validate and persist whichever sections are present.
 app.put("/api/settings", async (req, reply): Promise<SettingsResponse | { error: string }> => {
+  if (AUTH_ENABLED && !validSession(req.headers.cookie)) {
+    return reply.code(401).send({ error: "unauthorized" });
+  }
   const body = req.body as Partial<SettingsResponse> | undefined;
   if (body?.tariff !== undefined) {
     const tariff = cleanTariff(body.tariff);

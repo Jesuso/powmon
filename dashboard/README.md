@@ -62,7 +62,9 @@ npm start          # prod: fastify serves API + dist on :3001
 
 Config via env: `API_PORT` (3001), `MQTT_HOST`/`MQTT_PORT` (localhost:1883),
 `BASE_TOPIC` (`solar/inverter`), `DB_PATH` (`./data.db`), `RETENTION_DAYS`
-(30). Server binds 0.0.0.0 — LAN-reachable by intent, never internet-exposed.
+(30), `SETTINGS_PASSWORD` (unset → settings writes are open; set → gated, see
+[`docs/exposure.md`](../docs/exposure.md)). Server binds 0.0.0.0 —
+LAN-reachable by intent, never internet-exposed.
 
 API surface is small and self-describing: `/api/latest`, `/api/history`,
 `/api/states`, `/api/config`, `/api/settings`, `/api/stream` (SSE),

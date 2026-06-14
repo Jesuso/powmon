@@ -39,12 +39,36 @@ export async function getSettings(): Promise<SettingsResponse> {
   return r.json();
 }
 
+// Thrown when a write is rejected for lack of a session (gate enabled).
+export class AuthError extends Error {
+  constructor() { super("unauthorized"); this.name = "AuthError"; }
+}
+
+export interface AuthStatus { required: boolean; authed: boolean; }
+
+export async function getAuthStatus(): Promise<AuthStatus> {
+  const r = await fetch("/api/auth");
+  if (!r.ok) return { required: false, authed: true };
+  return r.json();
+}
+
+// Returns true on success, false on wrong password.
+export async function login(password: string): Promise<boolean> {
+  const r = await fetch("/api/auth", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password }),
+  });
+  return r.ok;
+}
+
 export async function putSettings(s: Partial<SettingsResponse>): Promise<SettingsResponse> {
   const r = await fetch("/api/settings", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(s),
   });
+  if (r.status === 401) throw new AuthError();
   if (!r.ok) throw new Error(`save failed (${r.status})`);
   return r.json();
 }
