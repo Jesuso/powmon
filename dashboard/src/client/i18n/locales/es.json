@@ -64,6 +64,10 @@
       "password": "Contraseña",
       "unlock": "Desbloquear",
       "wrong": "Contraseña incorrecta."
+    },
+    "readonly": {
+      "title": "Solo lectura",
+      "note": "Este panel se publica en modo solo lectura. La configuración se muestra pero no se puede cambiar aquí — guardar está deshabilitado en este servidor."
     }
   },
   "chartRef": {
