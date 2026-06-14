@@ -14,13 +14,20 @@ services:
     restart: unless-stopped
     ports:
       - "${MQTT_PUBLIC_PORT:-1883}:1883" # exposed so Home Assistant on the LAN can use this broker
+    environment:
+      MQTT_USER: ${MQTT_USER:-} # only used by the healthcheck below; broker auth is set in mosquitto.conf
+      MQTT_PASS: ${MQTT_PASS:-}
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto-data:/mosquitto/data
     healthcheck:
-      # A successful publish proves the broker accepts connections (anonymous, per
-      # mosquitto.conf). mosquitto_pub ships in the eclipse-mosquitto image.
-      test: ["CMD-SHELL", "mosquitto_pub -h localhost -p 1883 -t healthcheck -m ping || exit 1"]
+      # A test publish proves the broker accepts connections. mosquitto_pub ships
+      # in the eclipse-mosquitto image. Credentials are passed only when MQTT_USER
+      # is set, so the check still passes if you enable auth in mosquitto.conf —
+      # without them an auth-enabled broker would report "unhealthy" forever and,
+      # via depends_on below, block the whole stack from starting. $$ defers the
+      # variable expansion to the container shell (compose leaves it untouched).
+      test: ["CMD-SHELL", "mosquitto_pub -h localhost -p 1883 $${MQTT_USER:+-u \"$$MQTT_USER\" -P \"$$MQTT_PASS\"} -t healthcheck -m ping || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
