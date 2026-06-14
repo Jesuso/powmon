@@ -17,12 +17,21 @@ services:
     volumes:
       - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
       - mosquitto-data:/mosquitto/data
+    healthcheck:
+      # A successful publish proves the broker accepts connections (anonymous, per
+      # mosquitto.conf). mosquitto_pub ships in the eclipse-mosquitto image.
+      test: ["CMD-SHELL", "mosquitto_pub -h localhost -p 1883 -t healthcheck -m ping || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   collector:
     build: ./collector
     restart: unless-stopped
     depends_on:
-      - mosquitto
+      mosquitto:
+        condition: service_healthy
     environment:
       MQTT_HOST: ${MQTT_HOST:-mosquitto}
       MQTT_PORT: ${MQTT_PORT:-1883}
@@ -39,7 +48,8 @@ services:
     build: ./dashboard
     restart: unless-stopped
     depends_on:
-      - mosquitto
+      mosquitto:
+        condition: service_healthy
     ports:
       - "${DASHBOARD_PORT:-3001}:3001"
     environment:
