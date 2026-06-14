@@ -47,6 +47,29 @@ SETTINGS_PASSWORD=some-long-passphrase
 This protects the write route, not the data — the read endpoints (live state,
 history, charts) stay open to anyone who can reach the dashboard.
 
+## Read-only public mode
+
+If you'd rather share the dashboard **read-only** — show the data, allow zero
+changes, and not bother with a password at all — set **`PUBLIC_READONLY`**:
+
+```sh
+PUBLIC_READONLY=1
+```
+
+- **Unset/`0` → writes allowed** (default; unchanged behavior).
+- When on, **every** write route returns `403`, *regardless* of
+  `SETTINGS_PASSWORD` — even a valid session can't write. One switch = nothing on
+  this instance can be changed over the network. The Settings page still renders
+  the current values but its save controls are disabled, with a note explaining
+  why.
+
+This is the cleanest story for a public share: the audit answer to "can anyone
+change anything here?" is a flat no. It composes with `SETTINGS_PASSWORD` (which
+becomes moot for writes while read-only is on) and with location coarsening
+below (unauthenticated reads are still coarsened).
+
+Accepted truthy values: `1`, `true`, `yes`, `on` (case-insensitive).
+
 ## Hardening the auth endpoint
 
 When the gate is on, `POST /api/auth` is the one attackable surface on a
@@ -106,7 +129,7 @@ house. Set it lower to coarsen further, higher to disclose more.
 Exposing the dashboard publicly removes the "local and private" guarantee.
 PowMon is read-only over the inverter, so there's no way to harm it — but the
 tunnel publishes your energy data to whoever can reach the hostname, and (unless
-you set `SETTINGS_PASSWORD`, above) anyone reaching it can change the tariff and
-location. Put
+you set `SETTINGS_PASSWORD` or `PUBLIC_READONLY`, above) anyone reaching it can
+change the tariff and location. Put
 [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/)
 (or equivalent auth) in front of it if it shouldn't be world-readable.

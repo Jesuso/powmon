@@ -108,6 +108,10 @@
       "password": "Password",
       "unlock": "Unlock",
       "wrong": "Wrong password."
+    },
+    "readonly": {
+      "title": "Read-only",
+      "note": "This dashboard is published read-only. Settings are shown but can't be changed here — saving is disabled on this server."
     }
   },
   "chartRef": {

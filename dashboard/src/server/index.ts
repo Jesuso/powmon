@@ -28,6 +28,12 @@ const LOCATION_PUBLIC_DECIMALS = (() => {
   return Number.isInteger(n) && n >= 0 && n <= 7 ? n : 2;
 })();
 
+// ---- read-only public mode ----
+// PUBLIC_READONLY=1 disables EVERY mutating route, regardless of whether a
+// SETTINGS_PASSWORD is set. One switch = nothing on this instance can be changed
+// over the network. Unset/0/false -> writes allowed (default; backward-compatible).
+const PUBLIC_READONLY = /^(1|true|yes|on)$/i.test(process.env.PUBLIC_READONLY ?? "");
+
 // ---- optional settings-write auth ----
 // SETTINGS_PASSWORD unset/empty -> no gate (fully backward-compatible).
 // When set, PUT /api/settings requires a valid signed session cookie minted by
@@ -253,14 +259,13 @@ app.get("/api/settings", async (req): Promise<SettingsResponse> => {
 app.get("/api/auth", async (req) => ({
   required: AUTH_ENABLED,
   authed: AUTH_ENABLED ? validSession(req.headers.cookie) : true,
+  readonly: PUBLIC_READONLY,
 }));
 
 app.post("/api/auth", async (req, reply) => {
   if (!AUTH_ENABLED) return { ok: true, required: false };
   const ip = req.ip || "unknown";
 
-  // Locked out? Refuse before touching the password so brute force can't even
-  // probe the compare. 429 + Retry-After per RFC 6585.
   // Locked out? Refuse before touching the password so brute force can't even
   // probe the compare. 429 + Retry-After per RFC 6585. No log here: while locked
   // this branch is hit on every request, so logging it would let an attacker
@@ -290,6 +295,8 @@ app.post("/api/auth", async (req, reply) => {
 
 // Partial update: validate and persist whichever sections are present.
 app.put("/api/settings", async (req, reply): Promise<SettingsResponse | { error: string }> => {
+  // Read-only mode wins over auth: even a valid session can't write.
+  if (PUBLIC_READONLY) return reply.code(403).send({ error: "read-only" });
   if (AUTH_ENABLED && !validSession(req.headers.cookie)) {
     return reply.code(401).send({ error: "unauthorized" });
   }
