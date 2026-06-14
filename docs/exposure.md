@@ -47,6 +47,26 @@ SETTINGS_PASSWORD=some-long-passphrase
 This protects the write route, not the data — the read endpoints (live state,
 history, charts) stay open to anyone who can reach the dashboard.
 
+## Coarsening location on public reads
+
+The location used for sunrise/sunset night-shading is stored at full precision,
+but `GET /api/settings` **rounds it for unauthenticated reads** so a public read
+can't reveal your house. The authenticated owner (a valid `SETTINGS_PASSWORD`
+session) still gets full precision for editing. With no gate set, everyone is
+treated as the owner — unchanged LAN behavior.
+
+Precision is configurable via **`LOCATION_PUBLIC_DECIMALS`** (default `2`):
+
+| Decimals | Degrees | Magnitude | Reveals |
+|---|---|---|---|
+| 1 | 0.1° | ~11 km | broad region / city district |
+| 2 (default) | 0.01° | ~1.1 km | neighborhood / small town |
+| 3 | 0.001° | ~111 m | a block / large building |
+| 4 | 0.0001° | ~11 m | individual house / parcel |
+
+2 dp keeps sunrise/sunset accurate to well under a minute while hiding the
+house. Set it lower to coarsen further, higher to disclose more.
+
 ## Security note
 
 Exposing the dashboard publicly removes the "local and private" guarantee.

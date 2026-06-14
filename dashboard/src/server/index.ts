@@ -18,6 +18,15 @@ const BASE = process.env.BASE_TOPIC ?? "solar/inverter";
 const DB_PATH = process.env.DB_PATH ?? join(ROOT, "data.db");
 const RETENTION_DAYS = Number(process.env.RETENTION_DAYS ?? 30);
 
+// Coordinates are only used for sunrise/sunset night-shading, which needs no
+// parcel-level precision. Full lat/lon is stored, but unauthenticated reads get
+// it rounded to this many decimals (2 dp ≈ 1.1 km — hides the house, keeps
+// sunrise/sunset accurate to well under a minute). Clamped to a sane 0..7.
+const LOCATION_PUBLIC_DECIMALS = (() => {
+  const n = Number(process.env.LOCATION_PUBLIC_DECIMALS ?? 2);
+  return Number.isInteger(n) && n >= 0 && n <= 7 ? n : 2;
+})();
+
 // ---- optional settings-write auth ----
 // SETTINGS_PASSWORD unset/empty -> no gate (fully backward-compatible).
 // When set, PUT /api/settings requires a valid signed session cookie minted by
@@ -197,6 +206,14 @@ function cleanLocation(l: unknown): LocationSettings | null {
   return { lat, lon };
 }
 
+// Round lat/lon to `decimals` places for unauthenticated reads. Stored value is
+// untouched; this only shapes what goes on the wire.
+function coarsenLocation(loc: LocationSettings | null, decimals: number): LocationSettings | null {
+  if (!loc) return loc;
+  const f = 10 ** decimals;
+  return { lat: Math.round(loc.lat * f) / f, lon: Math.round(loc.lon * f) / f };
+}
+
 function settingsSnapshot(): SettingsResponse {
   return {
     tariff: store.getSetting<TariffSettings>("tariff") ?? DEFAULT_TARIFF,
@@ -205,7 +222,15 @@ function settingsSnapshot(): SettingsResponse {
   };
 }
 
-app.get("/api/settings", async (): Promise<SettingsResponse> => settingsSnapshot());
+// The settings owner (authed session, or no gate at all) gets full-precision
+// coordinates for editing; everyone else gets them coarsened so a public read
+// can't reveal the house. Same owner test as /api/auth.
+app.get("/api/settings", async (req): Promise<SettingsResponse> => {
+  const snap = settingsSnapshot();
+  const authed = AUTH_ENABLED ? validSession(req.headers.cookie) : true;
+  if (!authed) snap.location = coarsenLocation(snap.location, LOCATION_PUBLIC_DECIMALS);
+  return snap;
+});
 
 // ---- auth (only meaningful when SETTINGS_PASSWORD is set) ----
 // Whether a gate is active, and whether this request already holds a session.
