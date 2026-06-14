@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { getSettings, putSettings } from "../api.ts";
+import { getSettings, putSettings, getAuthStatus, login, AuthError } from "../api.ts";
 import { dateLocale } from "../i18n/index.ts";
 import { ConfigPanel } from "./ConfigPanel.tsx";
 import {
@@ -46,6 +46,25 @@ export function SettingsPage({ config, configLoading, onRefreshConfig, onSaved }
   const [tariffStatus, setTariffStatus] = useState<Status>("loading");
   const [billingStatus, setBillingStatus] = useState<Status>("loading");
   const [locationStatus, setLocationStatus] = useState<Status>("loading");
+  // Write gate (SETTINGS_PASSWORD). locked === false means writes are allowed.
+  const [locked, setLocked] = useState(false);
+  const [password, setPassword] = useState("");
+  const [loginError, setLoginError] = useState(false);
+  const [loginBusy, setLoginBusy] = useState(false);
+
+  useEffect(() => {
+    getAuthStatus().then((a) => setLocked(a.required && !a.authed)).catch(() => {});
+  }, []);
+
+  async function unlock() {
+    setLoginBusy(true);
+    setLoginError(false);
+    try {
+      if (await login(password)) { setLocked(false); setPassword(""); }
+      else setLoginError(true);
+    } catch { setLoginError(true); }
+    finally { setLoginBusy(false); }
+  }
 
   useEffect(() => {
     getSettings()
@@ -100,8 +119,9 @@ export function SettingsPage({ config, configLoading, onRefreshConfig, onSaved }
       onSaved(saved);
       setStatus("saved");
       setTimeout(() => setStatus("idle"), 2000);
-    } catch {
-      setStatus("error");
+    } catch (e) {
+      if (e instanceof AuthError) { setLocked(true); setStatus("idle"); }
+      else setStatus("error");
     }
   }
 
@@ -110,6 +130,30 @@ export function SettingsPage({ config, configLoading, onRefreshConfig, onSaved }
 
   return (
     <div className="settings">
+      {locked && (
+        <div className="card settings-card settings-lock">
+          <div className="card-head">
+            <span className="card-title">🔒 {t("settings.lock.title")}</span>
+          </div>
+          <p className="settings-hint">{t("settings.lock.hint")}</p>
+          <div className="settings-form">
+            <label>
+              <span>{t("settings.lock.password")}</span>
+              <input type="password" autoComplete="current-password"
+                value={password} onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") unlock(); }} />
+            </label>
+          </div>
+          <div className="settings-actions">
+            <span className="settings-effective">
+              {loginError ? t("settings.lock.wrong") : ""}
+            </span>
+            <button className="settings-save" disabled={!password || loginBusy} onClick={unlock}>
+              {loginBusy ? "…" : t("settings.lock.unlock")}
+            </button>
+          </div>
+        </div>
+      )}
       <div className="card settings-card">
         <div className="card-head">
           <span className="card-title">{t("settings.tariff")}</span>
@@ -132,7 +176,7 @@ export function SettingsPage({ config, configLoading, onRefreshConfig, onSaved }
               value={currency} onChange={(e) => setCurrency(e.target.value)} />
           </label>
         </div>
-        <SaveRow t={t} status={tariffStatus} valid={tariffValid} onSave={() => save("tariff")}
+        <SaveRow t={t} status={tariffStatus} valid={tariffValid && !locked} onSave={() => save("tariff")}
           note={effective !== null
             ? t("settings.effective", { v: `${currency.trim()}${effective.toFixed(2)}` })
             : t("settings.invalid")} />
@@ -166,7 +210,7 @@ export function SettingsPage({ config, configLoading, onRefreshConfig, onSaved }
             </label>
           )}
         </div>
-        <SaveRow t={t} status={billingStatus} valid={billingValid} onSave={() => save("billing")}
+        <SaveRow t={t} status={billingStatus} valid={billingValid && !locked} onSave={() => save("billing")}
           note={billingValid
             ? t("settings.billingNote", { n: pmN, d: adN })
             : t("settings.invalid")} />
@@ -190,7 +234,7 @@ export function SettingsPage({ config, configLoading, onRefreshConfig, onSaved }
               placeholder="-110.9559" value={lon} onChange={(e) => setLon(e.target.value)} />
           </label>
         </div>
-        <SaveRow t={t} status={locationStatus} valid={locationValid} onSave={() => save("location")}
+        <SaveRow t={t} status={locationStatus} valid={locationValid && !locked} onSave={() => save("location")}
           note={locationEmpty ? t("settings.locationOff") : locationValid ? `${lat}, ${lon}` : t("settings.invalid")} />
         {locationStatus === "error" && <div className="settings-error">{t("settings.error")}</div>}
       </div>

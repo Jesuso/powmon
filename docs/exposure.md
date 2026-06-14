@@ -25,10 +25,34 @@ State is stored locally and **encrypted at rest**.
 Full instructions, prerequisites (Cloudflare API token + account ID), and the
 connector install for the host are in **[`infra/README.md`](../infra/README.md)**.
 
+## Gating settings writes
+
+The dashboard is read-only over the inverter, but it does have **one write
+route** — `PUT /api/settings` (tariff, billing period, location). On the LAN
+that's fine; exposed publicly it's an open write route reachable with `curl`,
+regardless of whether the Settings tab is visible in the UI.
+
+Set **`SETTINGS_PASSWORD`** in `.env` to gate it server-side:
+
+```sh
+SETTINGS_PASSWORD=some-long-passphrase
+```
+
+- **Unset/empty → no gate** (default; unchanged behavior for LAN use).
+- When set, the Settings page prompts for the password. `POST /api/auth`
+  checks it (constant-time compare) and issues an **httpOnly, signed session
+  cookie**; `PUT /api/settings` returns `401` without a valid session. The
+  signing secret is per-process, so restarting the server invalidates sessions.
+
+This protects the write route, not the data — the read endpoints (live state,
+history, charts) stay open to anyone who can reach the dashboard.
+
 ## Security note
 
 Exposing the dashboard publicly removes the "local and private" guarantee.
-PowMon is read-only, so there's no way to harm the inverter — but the tunnel
-publishes your energy data to whoever can reach the hostname. Put
+PowMon is read-only over the inverter, so there's no way to harm it — but the
+tunnel publishes your energy data to whoever can reach the hostname, and (unless
+you set `SETTINGS_PASSWORD`, above) anyone reaching it can change the tariff and
+location. Put
 [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/)
 (or equivalent auth) in front of it if it shouldn't be world-readable.

@@ -8,6 +8,10 @@ All notable changes to PowMon are documented here. Format follows
 
 ### Added
 
+- Optional **`SETTINGS_PASSWORD`** gate on settings writes. Unset → no gate
+  (unchanged). When set, `PUT /api/settings` requires a session minted by
+  `POST /api/auth` (constant-time password check, httpOnly signed cookie). For
+  public exposure; see `docs/exposure.md`.
 - Container healthchecks for all three services so `docker compose ps` reports
   real status: dashboard probes `/api/health`, mosquitto does a test publish, and
   the collector checks a poll heartbeat. Dependents now wait for the broker to be
