@@ -44,11 +44,17 @@ export class AuthError extends Error {
   constructor() { super("unauthorized"); this.name = "AuthError"; }
 }
 
-export interface AuthStatus { required: boolean; authed: boolean; }
+// Thrown when a write is rejected because the instance is in read-only mode
+// (PUBLIC_READONLY). No login can clear it — writes are off entirely.
+export class ReadonlyError extends Error {
+  constructor() { super("read-only"); this.name = "ReadonlyError"; }
+}
+
+export interface AuthStatus { required: boolean; authed: boolean; readonly: boolean; }
 
 export async function getAuthStatus(): Promise<AuthStatus> {
   const r = await fetch("/api/auth");
-  if (!r.ok) return { required: false, authed: true };
+  if (!r.ok) return { required: false, authed: true, readonly: false };
   return r.json();
 }
 
@@ -68,6 +74,7 @@ export async function putSettings(s: Partial<SettingsResponse>): Promise<Setting
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(s),
   });
+  if (r.status === 403) throw new ReadonlyError();
   if (r.status === 401) throw new AuthError();
   if (!r.ok) throw new Error(`save failed (${r.status})`);
   return r.json();

@@ -66,6 +66,8 @@ services:
       BASE_TOPIC: ${BASE_TOPIC:-solar/inverter}
       DB_PATH: /data/data.db
       SETTINGS_PASSWORD: ${SETTINGS_PASSWORD:-} # optional: gate settings writes (see docs/exposure.md)
+      TRUST_PROXY: ${TRUST_PROXY:-} # set true behind a trusted proxy/tunnel so rate limiting sees real client IPs
+      COOKIE_SECURE: ${COOKIE_SECURE:-auto} # auto|true|false — session cookie Secure flag
     volumes:
       - dashboard-data:/data
 

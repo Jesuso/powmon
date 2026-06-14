@@ -6,6 +6,7 @@ import { dirname, join } from "node:path";
 import { existsSync } from "node:fs";
 import { createHmac, randomBytes, timingSafeEqual, createHash } from "node:crypto";
 import { Store } from "./db.ts";
+import { AuthRateLimiter, isSecureRequest, resolveSecure, sessionCookie } from "./auth.ts";
 import { NUMERIC_KEYS, DEFAULT_TARIFF, DEFAULT_BILLING, type InverterState, type HistoryResponse, type LatestResponse, type StatesResponse, type ConfigResponse, type SettingsResponse, type TariffSettings, type BillingSettings, type LocationSettings, type DailyResponse } from "../shared/types.ts";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -27,6 +28,12 @@ const LOCATION_PUBLIC_DECIMALS = (() => {
   return Number.isInteger(n) && n >= 0 && n <= 7 ? n : 2;
 })();
 
+// ---- read-only public mode ----
+// PUBLIC_READONLY=1 disables EVERY mutating route, regardless of whether a
+// SETTINGS_PASSWORD is set. One switch = nothing on this instance can be changed
+// over the network. Unset/0/false -> writes allowed (default; backward-compatible).
+const PUBLIC_READONLY = /^(1|true|yes|on)$/i.test(process.env.PUBLIC_READONLY ?? "");
+
 // ---- optional settings-write auth ----
 // SETTINGS_PASSWORD unset/empty -> no gate (fully backward-compatible).
 // When set, PUT /api/settings requires a valid signed session cookie minted by
@@ -38,6 +45,18 @@ const COOKIE_NAME = "pm_session";
 // Per-process secret: rotates on restart (invalidates old sessions) and keeps
 // the raw password out of the cookie signature.
 const SESSION_SECRET = randomBytes(32);
+
+// Trust X-Forwarded-* so req.ip is the real client (not the proxy) and the
+// scheme is read from X-Forwarded-Proto. Enable ONLY behind a trusted proxy
+// (e.g. the Cloudflare Tunnel connector) — on a bare LAN it would let a client
+// spoof its IP and dodge the rate limiter. Off by default (LAN-safe).
+const TRUST_PROXY = /^(1|true|yes)$/i.test(process.env.TRUST_PROXY ?? "");
+// "auto" (default) sets the cookie Secure flag from the request scheme;
+// "true"/"false" force it. Auto keeps plain-HTTP LAN logins working.
+const COOKIE_SECURE_MODE = process.env.COOKIE_SECURE ?? "auto";
+
+// Per-IP exponential-backoff lockout on POST /api/auth.
+const authLimiter = new AuthRateLimiter();
 
 function mintSession(): string {
   const exp = String(Date.now() + SESSION_TTL_MS);
@@ -138,7 +157,10 @@ setInterval(() => {
 }, 3600_000).unref();
 
 // ---- HTTP ----
-const app = Fastify({ logger: false });
+const app = Fastify({ logger: false, trustProxy: TRUST_PROXY });
+
+// Evict idle rate-limit buckets so the map can't grow without bound.
+setInterval(() => authLimiter.sweep(), 600_000).unref();
 
 app.get("/api/health", async () => ({ ok: true, rows: store.count(), online }));
 
@@ -237,22 +259,44 @@ app.get("/api/settings", async (req): Promise<SettingsResponse> => {
 app.get("/api/auth", async (req) => ({
   required: AUTH_ENABLED,
   authed: AUTH_ENABLED ? validSession(req.headers.cookie) : true,
+  readonly: PUBLIC_READONLY,
 }));
 
 app.post("/api/auth", async (req, reply) => {
   if (!AUTH_ENABLED) return { ok: true, required: false };
+  const ip = req.ip || "unknown";
+
+  // Locked out? Refuse before touching the password so brute force can't even
+  // probe the compare. 429 + Retry-After per RFC 6585. No log here: while locked
+  // this branch is hit on every request, so logging it would let an attacker
+  // flood the log — the lockout is logged once below, when it engages.
+  const waitMs = authLimiter.retryAfterMs(ip);
+  if (waitMs > 0) {
+    reply.header("Retry-After", String(Math.ceil(waitMs / 1000)));
+    return reply.code(429).send({ error: "too many attempts", retry_after: Math.ceil(waitMs / 1000) });
+  }
+
   const body = req.body as { password?: unknown } | undefined;
   const password = typeof body?.password === "string" ? body.password : "";
   if (!password || !passwordMatches(password)) {
+    const lockedMs = authLimiter.recordFailure(ip);
+    // Log the event, never the attempted value. Bounded: once locked, the 429
+    // branch above returns before we reach here.
+    const note = lockedMs > 0 ? ` — locked out ${Math.ceil(lockedMs / 1000)}s` : "";
+    console.warn(`[auth] failed attempt ip=${ip}${note}`);
     return reply.code(401).send({ error: "invalid password" });
   }
-  reply.header("Set-Cookie",
-    `${COOKIE_NAME}=${mintSession()}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${SESSION_TTL_MS / 1000}`);
+
+  authLimiter.recordSuccess(ip);
+  const secure = resolveSecure(COOKIE_SECURE_MODE, isSecureRequest(req.headers, req.protocol));
+  reply.header("Set-Cookie", sessionCookie(COOKIE_NAME, mintSession(), SESSION_TTL_MS / 1000, secure));
   return { ok: true };
 });
 
 // Partial update: validate and persist whichever sections are present.
 app.put("/api/settings", async (req, reply): Promise<SettingsResponse | { error: string }> => {
+  // Read-only mode wins over auth: even a valid session can't write.
+  if (PUBLIC_READONLY) return reply.code(403).send({ error: "read-only" });
   if (AUTH_ENABLED && !validSession(req.headers.cookie)) {
     return reply.code(401).send({ error: "unauthorized" });
   }

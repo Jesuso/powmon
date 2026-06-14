@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { getSettings, putSettings, getAuthStatus, login, AuthError } from "../api.ts";
+import { getSettings, putSettings, getAuthStatus, login, AuthError, ReadonlyError } from "../api.ts";
 import { dateLocale } from "../i18n/index.ts";
 import { ConfigPanel } from "./ConfigPanel.tsx";
 import {
@@ -48,13 +48,22 @@ export function SettingsPage({ config, configLoading, onRefreshConfig, onSaved }
   const [locationStatus, setLocationStatus] = useState<Status>("loading");
   // Write gate (SETTINGS_PASSWORD). locked === false means writes are allowed.
   const [locked, setLocked] = useState(false);
+  // Instance-wide read-only mode (PUBLIC_READONLY). No login can clear it.
+  const [readonly, setReadonly] = useState(false);
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState(false);
   const [loginBusy, setLoginBusy] = useState(false);
 
   useEffect(() => {
-    getAuthStatus().then((a) => setLocked(a.required && !a.authed)).catch(() => {});
+    getAuthStatus().then((a) => {
+      setReadonly(a.readonly);
+      // Read-only suppresses the password prompt: logging in wouldn't help.
+      setLocked(!a.readonly && a.required && !a.authed);
+    }).catch(() => {});
   }, []);
+
+  // Writes are allowed only when neither gated-out nor read-only.
+  const writable = !locked && !readonly;
 
   async function unlock() {
     setLoginBusy(true);
@@ -120,7 +129,8 @@ export function SettingsPage({ config, configLoading, onRefreshConfig, onSaved }
       setStatus("saved");
       setTimeout(() => setStatus("idle"), 2000);
     } catch (e) {
-      if (e instanceof AuthError) { setLocked(true); setStatus("idle"); }
+      if (e instanceof ReadonlyError) { setReadonly(true); setStatus("idle"); }
+      else if (e instanceof AuthError) { setLocked(true); setStatus("idle"); }
       else setStatus("error");
     }
   }
@@ -130,6 +140,14 @@ export function SettingsPage({ config, configLoading, onRefreshConfig, onSaved }
 
   return (
     <div className="settings">
+      {readonly && (
+        <div className="card settings-card settings-lock">
+          <div className="card-head">
+            <span className="card-title">👁 {t("settings.readonly.title")}</span>
+          </div>
+          <p className="settings-hint">{t("settings.readonly.note")}</p>
+        </div>
+      )}
       {locked && (
         <div className="card settings-card settings-lock">
           <div className="card-head">
@@ -176,7 +194,7 @@ export function SettingsPage({ config, configLoading, onRefreshConfig, onSaved }
               value={currency} onChange={(e) => setCurrency(e.target.value)} />
           </label>
         </div>
-        <SaveRow t={t} status={tariffStatus} valid={tariffValid && !locked} onSave={() => save("tariff")}
+        <SaveRow t={t} status={tariffStatus} valid={tariffValid && writable} onSave={() => save("tariff")}
           note={effective !== null
             ? t("settings.effective", { v: `${currency.trim()}${effective.toFixed(2)}` })
             : t("settings.invalid")} />
@@ -210,7 +228,7 @@ export function SettingsPage({ config, configLoading, onRefreshConfig, onSaved }
             </label>
           )}
         </div>
-        <SaveRow t={t} status={billingStatus} valid={billingValid && !locked} onSave={() => save("billing")}
+        <SaveRow t={t} status={billingStatus} valid={billingValid && writable} onSave={() => save("billing")}
           note={billingValid
             ? t("settings.billingNote", { n: pmN, d: adN })
             : t("settings.invalid")} />
@@ -234,7 +252,7 @@ export function SettingsPage({ config, configLoading, onRefreshConfig, onSaved }
               placeholder="-110.9559" value={lon} onChange={(e) => setLon(e.target.value)} />
           </label>
         </div>
-        <SaveRow t={t} status={locationStatus} valid={locationValid && !locked} onSave={() => save("location")}
+        <SaveRow t={t} status={locationStatus} valid={locationValid && writable} onSave={() => save("location")}
           note={locationEmpty ? t("settings.locationOff") : locationValid ? `${lat}, ${lon}` : t("settings.invalid")} />
         {locationStatus === "error" && <div className="settings-error">{t("settings.error")}</div>}
       </div>
